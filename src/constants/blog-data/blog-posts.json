@@ -1,0 +1,31 @@
+[
+  {
+    "title": "Another blog post",
+    "date": "March 23, 2020",
+    "category": "Technology",
+    "author": "Matt",
+    "image": "https://source.unsplash.com/random?education",
+    "description": [
+      "This is another blog post. It's not as long as the first one, but it's still pretty good.",
+      "I hope you enjoy it!"
+    ],
+    "comments": ["No comments yet."]
+  },
+  {
+    "title": "New feature",
+    "date": "March 14, 2020",
+    "category": "Technology",
+    "author": "Tom",
+    "image": "https://source.unsplash.com/random?campus",
+    "description": [
+      "We are excited to announce a new feature that will be available to all users starting next week.",
+      "This feature will allow you to track your progress and see how you are doing compared to others.",
+      "Stay tuned for more details!"
+    ],
+    "comments": [
+      "This is a great feature!",
+      "I can't wait to try it out.",
+      "This is exactly what I needed."
+    ]
+  }
+]
