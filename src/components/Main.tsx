@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Container,
   Card,
@@ -15,6 +15,16 @@ import {
 import CommentIcon from "@mui/icons-material/Comment";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
+import { getImage } from '../utils/imageStorage.ts';
+
+// 1) Firestore imports
+import {
+  collection,
+  onSnapshot,
+  addDoc,
+ // doc,
+} from "firebase/firestore";
+import { db } from "../firebase.ts"; // <-- Adjust path to your firebase config
 
 interface Comment {
   text: string;
@@ -22,20 +32,26 @@ interface Comment {
 }
 
 interface Post {
+  /** 
+   * In Firestore, the doc ID is typically a string.
+   * But you've also stored a numeric id inside the document. 
+   * We'll treat "docId" as the Firestore document ID (string),
+   * and "id" as that numeric ID field.
+   */
+  docId: string;
   id: number;
   title: string;
   category: string;
   date: string;
-  author: string;
   image: string | null;
   description: string;
-  comments: Comment[];
+  comments: Comment[]; // We won't rely on this array; we'll fetch real comments from subcollection
 }
 
 interface MainProps {
-  posts: Post[];
+  posts: Post[];                    // These come from Blog.tsx, read from Firestore
   selectedCategory: string;
-  onDeletePost: (postId: number) => void; // <--- declare a function prop
+  onDeletePost: (postDocId: string) => void; // Now docId is string
 }
 
 export default function Main({
@@ -44,57 +60,106 @@ export default function Main({
   onDeletePost,
 }: MainProps) {
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
-  const [selectedPostWithComments, setSelectedPostWithComments] =
-    useState<Post | null>(null);
-  const [comment, setComment] = useState("");
+
+  // For comments modal, we keep track of the post + a local state for the comments from Firestore
+  const [selectedPostForComments, setSelectedPostForComments] = useState<Post | null>(null);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [commentText, setCommentText] = useState("");
 
   // Filter posts by category
   const filteredPosts = selectedCategory
     ? posts.filter((p) => p.category === selectedCategory)
     : posts;
 
-  // Show the "Full Post" modal
+  // -------------------------
+  // 1) Show the "Full Post" modal
+  // -------------------------
   const handlePostClick = (post: Post) => {
     setSelectedPost(post);
   };
 
-  // Show the "Comments" modal
+  // -------------------------
+  // 2) Show the "Comments" modal
+  //    We'll attach a Firestore listener for that post's comments subcollection
+  // -------------------------
   const handleCommentClick = (e: React.MouseEvent, post: Post) => {
     e.stopPropagation(); // prevents card click
-    setSelectedPostWithComments(post);
+    setSelectedPostForComments(post);
   };
+
+  // Whenever selectedPostForComments changes, set up a real-time listener for that post's comments
+  useEffect(() => {
+    if (!selectedPostForComments) {
+      setComments([]);
+      return;
+    }
+
+    const commentsRef = collection(db, "posts", selectedPostForComments.docId, "comments");
+    const unsubscribe = onSnapshot(commentsRef, (snapshot) => {
+      const fetchedComments: Comment[] = [];
+      snapshot.forEach((docSnap) => {
+        fetchedComments.push(docSnap.data() as Comment);
+      });
+      setComments(fetchedComments);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [selectedPostForComments]);
 
   // Close modals
   const handleClosePost = () => setSelectedPost(null);
   const handleCloseComments = () => {
-    setSelectedPostWithComments(null);
-    setComment("");
+    setSelectedPostForComments(null);
+    setCommentText("");
   };
 
   // Handle new comment text
-  const handleCommentChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    setComment(e.target.value);
+  const handleCommentChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setCommentText(e.target.value);
   };
 
-  // Add comment to post
-  const handleAddComment = () => {
-    if (selectedPostWithComments && comment.trim()) {
-      selectedPostWithComments.comments.push({
-        text: comment,
+  // -------------------------
+  // 3) Add a comment to Firestore subcollection
+  // -------------------------
+  const handleAddComment = async () => {
+    if (!selectedPostForComments || !commentText.trim()) return;
+
+    try {
+      const commentsRef = collection(db, "posts", selectedPostForComments.docId, "comments");
+      await addDoc(commentsRef, {
+        text: commentText,
         date: new Date().toLocaleString(),
       });
-      // Force re-render
-      setSelectedPostWithComments({ ...selectedPostWithComments });
-      setComment("");
+      setCommentText("");
+    } catch (error) {
+      console.error("Error adding comment:", error);
+      alert("Failed to add comment");
     }
   };
 
-  // Call the parent's delete callback
-  const handleDeletePost = (e: React.MouseEvent, postId: number) => {
+  // -------------------------
+  // 4) Delete a post
+  // -------------------------
+  const handleDeletePost = (e: React.MouseEvent, postDocId: string) => {
     e.stopPropagation();
-    onDeletePost(postId);
+    onDeletePost(postDocId);
+  };
+
+  const renderImage = (imageUrl: string | null) => {
+    if (!imageUrl) return null;
+    const localUrl = getImage(imageUrl);
+    if (!localUrl) return null;
+
+    return (
+      <CardMedia
+        component="img"
+        height="300"
+        image={localUrl}
+        sx={{ borderRadius: 1, marginBottom: 2 }}
+      />
+    );
   };
 
   return (
@@ -107,7 +172,7 @@ export default function Main({
         ) : (
           filteredPosts.map((post) => (
             <Card
-              key={post.id}
+              key={post.docId}
               sx={{
                 borderRadius: 2,
                 marginTop: "16px",
@@ -124,17 +189,10 @@ export default function Main({
                   {post.title}
                 </Typography>
                 <Typography variant="subtitle1" color="text.secondary" gutterBottom>
-                  By {post.author} - {post.date}
+                  {post.date}
                 </Typography>
-                {post.image && (
-                  <CardMedia
-                    component="img"
-                    height="300"
-                    image={post.image}
-                    alt={post.title}
-                    sx={{ borderRadius: 1, marginBottom: 2 }}
-                  />
-                )}
+
+                {renderImage(post.image)}
 
                 {/* Footer with Delete and Comment icons */}
                 <Box
@@ -160,7 +218,7 @@ export default function Main({
                     <IconButton
                       size="small"
                       color="error"
-                      onClick={(e) => handleDeletePost(e, post.id)}
+                      onClick={(e) => handleDeletePost(e, post.docId)}
                     >
                       <DeleteIcon />
                     </IconButton>
@@ -233,7 +291,7 @@ export default function Main({
                       {selectedPost.title}
                     </Typography>
                     <Typography variant="subtitle1" color="text.secondary">
-                      By {selectedPost.author} - {selectedPost.date}
+                      {selectedPost.date}
                     </Typography>
                   </Box>
 
@@ -260,8 +318,8 @@ export default function Main({
         </Box>
       </Modal>
 
-      {/* FULL POST w/ COMMENTS MODAL */}
-      <Modal open={!!selectedPostWithComments} onClose={handleCloseComments}>
+      {/* COMMENTS MODAL (Full Post + Comments) */}
+      <Modal open={!!selectedPostForComments} onClose={handleCloseComments}>
         <Box
           sx={{
             position: "absolute",
@@ -278,22 +336,21 @@ export default function Main({
             overflow: "hidden",
           }}
         >
-          {selectedPostWithComments && (
+          {selectedPostForComments && (
             <Grid container spacing={3} sx={{ height: "100%" }}>
               {/* Left side - post details */}
               <Grid item xs={8} sx={{ height: "100%" }}>
                 <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
                   <Box sx={{ mb: 3 }}>
                     <Typography variant="h4" gutterBottom>
-                      {selectedPostWithComments.title}
+                      {selectedPostForComments.title}
                     </Typography>
                     <Typography variant="subtitle1" color="text.secondary">
-                      By {selectedPostWithComments.author} -{" "}
-                      {selectedPostWithComments.date}
+                      {selectedPostForComments.date}
                     </Typography>
-                    {selectedPostWithComments.image && (
+                    {selectedPostForComments.image && (
                       <img
-                        src={selectedPostWithComments.image}
+                        src={selectedPostForComments.image}
                         alt="Post"
                         style={{
                           width: "100%",
@@ -312,18 +369,12 @@ export default function Main({
                       overflowY: "auto",
                       p: 2,
                       "&::-webkit-scrollbar": { width: "8px" },
-                      "&::-webkit-scrollbar-track": {
-                        background: "#f1f1f1",
-                        borderRadius: "4px",
-                      },
-                      "&::-webkit-scrollbar-thumb": {
-                        background: "#888",
-                        borderRadius: "4px",
-                      },
+                      "&::-webkit-scrollbar-track": { background: "#f1f1f1", borderRadius: "4px" },
+                      "&::-webkit-scrollbar-thumb": { background: "#888", borderRadius: "4px" },
                     }}
                   >
                     <Typography variant="body1" sx={{ lineHeight: 1.8 }}>
-                      {selectedPostWithComments.description}
+                      {selectedPostForComments.description}
                     </Typography>
                   </Box>
                 </Box>
@@ -343,7 +394,7 @@ export default function Main({
                       multiline
                       rows={3}
                       label="Add a Comment"
-                      value={comment}
+                      value={commentText}
                       onChange={handleCommentChange}
                     />
                     <Button variant="contained" sx={{ mt: 1 }} onClick={handleAddComment}>
@@ -365,7 +416,7 @@ export default function Main({
                       },
                     }}
                   >
-                    {selectedPostWithComments.comments.map((c, idx) => (
+                    {comments.map((c, idx) => (
                       <Paper key={idx} sx={{ mb: 2, p: 2, borderRadius: 2 }}>
                         <Typography variant="body2">{c.text}</Typography>
                         <Typography variant="caption" color="text.secondary">
