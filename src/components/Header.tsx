@@ -1,4 +1,6 @@
 import * as React from "react";
+import { useContext } from "react";
+import { useNavigate } from "react-router-dom";
 import Toolbar from "@mui/material/Toolbar";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
@@ -12,7 +14,8 @@ import MenuItem from "@mui/material/MenuItem";
 import Input from "@mui/material/Input";
 import Paper from "@mui/material/Paper";
 import Backdrop from "@mui/material/Backdrop";
-import { storeImage } from '../utils/imageStorage.ts';
+import { storeImage } from "../utils/imageStorage.ts";
+import { AuthContext } from "../context/AuthContext.tsx";
 
 interface CommentData {
   text: string;
@@ -20,11 +23,11 @@ interface CommentData {
 }
 
 interface Post {
-  id: number;                
+  id: number;
   title: string;
   category: string;
   description: string;
-  image: string | null;       
+  image: string | null;
   date: string;
   comments: CommentData[];
 }
@@ -36,8 +39,8 @@ interface HeaderProps {
     url?: string;
   }>;
   selectedCategory: string;
-  onSelectCategory: (category: string) => void;  
-  onAddPost: (post: Post) => void;              
+  onSelectCategory: (category: string) => void;
+  onAddPost: (post: Post) => void;
 }
 
 const categories = [
@@ -59,9 +62,8 @@ export default function Header({
   sections,
   selectedCategory,
   onSelectCategory,
-  onAddPost
+  onAddPost,
 }: HeaderProps) {
-  // Control "Create Post" modal
   const [open, setOpen] = React.useState(false);
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
@@ -80,6 +82,10 @@ export default function Header({
   // Store the raw File object from the user
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
 
+  // For admin-only Users button
+  const navigate = useNavigate();
+  const { userRole } = useContext(AuthContext);
+
   // Update text fields
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -90,7 +96,6 @@ export default function Header({
   // Capture the raw File object from the local machine
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      // Do NOT convert to a local path or createObjectURL; just store the File object
       setSelectedFile(e.target.files[0]);
       console.log("Selected file:", e.target.files[0]);
     }
@@ -167,10 +172,16 @@ export default function Header({
         <IconButton>
           <SearchIcon />
         </IconButton>
-
-        <Button variant="outlined" size="small">
-          Sign up
-        </Button>
+        {/* Conditionally render the Users button for administrators */}
+        {userRole === "administrator" && (
+          <Button
+            size="small"
+            color="primary"
+            onClick={() => navigate("/admin")}
+          >
+            Users
+          </Button>
+        )}
       </Toolbar>
 
       {/* Category navigation */}
@@ -267,7 +278,7 @@ export default function Header({
             onChange={handleChange}
           />
 
-          {/* File input -> just store raw File */}
+          {/* File input */}
           <Input
             type="file"
             fullWidth

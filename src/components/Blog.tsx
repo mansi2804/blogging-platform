@@ -51,7 +51,6 @@ interface Post {
 }
 
 export default function Blog() {
-  // Local state for all posts (fetched from Firestore in real-time)
   const [posts, setPosts] = React.useState<Post[]>([]);
 
   // State for currently selected category
