@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useContext } from "react";
+import { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Toolbar from "@mui/material/Toolbar";
 import Button from "@mui/material/Button";
@@ -10,12 +10,15 @@ import Link from "@mui/material/Link";
 import Modal from "@mui/material/Modal";
 import Box from "@mui/material/Box";
 import TextField from "@mui/material/TextField";
-import MenuItem from "@mui/material/MenuItem";
 import Input from "@mui/material/Input";
 import Paper from "@mui/material/Paper";
 import Backdrop from "@mui/material/Backdrop";
 import { storeImage } from "../utils/imageStorage.ts";
 import { AuthContext } from "../context/AuthContext.tsx";
+import Avatar from "@mui/material/Avatar";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import { Logout } from "@mui/icons-material";
 
 interface CommentData {
   text: string;
@@ -68,7 +71,6 @@ export default function Header({
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
 
-  // Local form state (minus the file)
   const [post, setPost] = React.useState<Post>({
     id: 0,
     title: "",
@@ -79,21 +81,32 @@ export default function Header({
     comments: [],
   });
 
-  // Store the raw File object from the user
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
 
-  // For admin-only Users button
   const navigate = useNavigate();
-  const { userRole } = useContext(AuthContext);
+  const { userRole, userEmail, logout } = useContext(AuthContext);
 
-  // Update text fields
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+  const handleProfileClick = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleProfileClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleLogout = () => {
+    logout(); // Make sure the logout function is implemented in AuthContext
+    navigate("/");
+  };
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     setPost({ ...post, [e.target.name]: e.target.value });
   };
 
-  // Capture the raw File object from the local machine
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       setSelectedFile(e.target.files[0]);
@@ -101,7 +114,6 @@ export default function Header({
     }
   };
 
-  // Create a new post
   const handlePost = async () => {
     try {
       if (!post.category) {
@@ -109,7 +121,6 @@ export default function Header({
         return;
       }
 
-      // Store image locally and get URL
       let imageUrl = null;
       if (selectedFile) {
         imageUrl = storeImage(selectedFile);
@@ -125,7 +136,6 @@ export default function Header({
 
       onAddPost(newPost);
 
-      // Reset form
       setPost({
         id: 0,
         title: "",
@@ -143,7 +153,6 @@ export default function Header({
     }
   };
 
-  // Switch category
   const handleCategoryClick = (category: string) => {
     onSelectCategory(category);
   };
@@ -172,7 +181,7 @@ export default function Header({
         <IconButton>
           <SearchIcon />
         </IconButton>
-        {/* Conditionally render the Users button for administrators */}
+
         {userRole === "administrator" && (
           <Button
             size="small"
@@ -182,9 +191,47 @@ export default function Header({
             Users
           </Button>
         )}
+
+        {/* User profile avatar */}
+        <Avatar
+        alt="User Profile"
+        sx={{
+          cursor: 'pointer',
+          backgroundColor: '#5c6bc0', 
+          backdropFilter: 'blur(5px)',
+          borderRadius: '50%',
+          boxShadow: '0px 4px 6px rgba(0, 0, 0, 0.1)', 
+          '&:hover': {
+            transform: 'scale(1.1)', 
+            boxShadow: '0px 6px 8px rgba(0, 0, 0, 0.2)', 
+          },
+        }}
+        onClick={handleProfileClick}
+      />
+
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleProfileClose}
+        sx={{
+          backdropFilter: 'blur(10px)', 
+          backgroundColor: 'rgba(255, 255, 255, 0.3)', 
+          borderRadius: '8px', 
+        }}
+      >
+        <MenuItem disabled>
+          <Typography sx={{ fontWeight: 'bold', color: '#333' }}>Email: {userEmail}</Typography>
+        </MenuItem>
+        <MenuItem disabled>
+          <Typography sx={{ fontWeight: 'bold', color: '#333' }}>Role: {userRole}</Typography>
+        </MenuItem>
+        <MenuItem onClick={handleLogout} sx={{ color: '#e57373' }}>
+          <Logout sx={{ mr: 1 }} /> 
+          <Typography sx={{ fontWeight: 'bold' }}>Logout</Typography>
+        </MenuItem>
+      </Menu>
       </Toolbar>
 
-      {/* Category navigation */}
       <Toolbar
         component="nav"
         variant="dense"
@@ -212,91 +259,167 @@ export default function Header({
         ))}
       </Toolbar>
 
-      {/* Create Post Modal */}
       <Modal
         open={open}
         onClose={handleClose}
         BackdropComponent={Backdrop}
         BackdropProps={{ invisible: true }}
       >
-        <Box
-          component={Paper}
-          elevation={3}
-          sx={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            width: 450,
-            bgcolor: "rgba(255, 255, 255, 0.9)",
-            boxShadow: 24,
-            p: 4,
-            borderRadius: 2,
-            backdropFilter: "blur(10px)",
-          }}
-        >
-          <Typography variant="h6" align="center" gutterBottom>
-            Create a Post
-          </Typography>
+           <Box
+      component={Paper}
+      elevation={3}
+      sx={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: 450,
+        bgcolor: 'rgba(255, 255, 255, 0.3)', 
+        backdropFilter: 'blur(10px)', 
+        boxShadow: 24,
+        p: 4,
+        borderRadius: 2,
+        transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out', 
+        ':hover': {
+          transform: 'translate(-50%, -50%) scale(1.05)', 
+          boxShadow: 24,
+        },
+      }}
+    >
+      <Typography
+        variant="h6"
+        align="center"
+        gutterBottom
+        sx={{
+          color: '#fff',
+          fontWeight: 600,
+          letterSpacing: '0.5px',
+          textTransform: 'uppercase',  
+        }}
+      >
+        Create a Post
+      </Typography>
 
-          {/* Title */}
-          <TextField
-            fullWidth
-            label="Title"
-            name="title"
-            margin="normal"
-            value={post.title}
-            onChange={handleChange}
-          />
+      <TextField
+        fullWidth
+        label="Title"
+        name="title"
+        margin="normal"
+        value={post.title}
+        onChange={handleChange}
+        sx={{
+          backgroundColor: 'rgba(255, 255, 255, 0.7)',
+          borderRadius: '8px',
+          '& .MuiOutlinedInput-root': {
+            '& fieldset': {
+              borderColor: '#ccc', 
+            },
+            '&:hover fieldset': {
+              borderColor: '#5c6bc0', 
+            },
+            '&.Mui-focused fieldset': {
+              borderColor: '#5c6bc0',
+            },
+          },
+        }}
+      />
 
-          {/* Category */}
-          <TextField
-            select
-            fullWidth
-            label="Category"
-            name="category"
-            margin="normal"
-            value={post.category}
-            onChange={handleChange}
-          >
-            {categories.map((option) => (
-              <MenuItem key={option} value={option}>
-                {option}
-              </MenuItem>
-            ))}
-          </TextField>
+      <TextField
+        select
+        fullWidth
+        label="Category"
+        name="category"
+        margin="normal"
+        value={post.category}
+        onChange={handleChange}
+        sx={{
+          backgroundColor: 'rgba(255, 255, 255, 0.7)', 
+          borderRadius: '8px',
+          '& .MuiOutlinedInput-root': {
+            '& fieldset': {
+              borderColor: '#ccc',
+            },
+            '&:hover fieldset': {
+              borderColor: '#5c6bc0',
+            },
+            '&.Mui-focused fieldset': {
+              borderColor: '#5c6bc0',
+            },
+          },
+        }}
+      >
+        {categories.map((option) => (
+          <MenuItem key={option} value={option}>
+            {option}
+          </MenuItem>
+        ))}
+      </TextField>
 
-          {/* Description */}
-          <TextField
-            fullWidth
-            multiline
-            rows={4}
-            label="Description"
-            name="description"
-            margin="normal"
-            value={post.description}
-            onChange={handleChange}
-          />
+      <TextField
+        fullWidth
+        multiline
+        rows={4}
+        label="Description"
+        name="description"
+        margin="normal"
+        value={post.description}
+        onChange={handleChange}
+        sx={{
+          backgroundColor: 'rgba(255, 255, 255, 0.7)', 
+          borderRadius: '8px',
+          '& .MuiOutlinedInput-root': {
+            '& fieldset': {
+              borderColor: '#ccc',
+            },
+            '&:hover fieldset': {
+              borderColor: '#5c6bc0',
+            },
+            '&.Mui-focused fieldset': {
+              borderColor: '#5c6bc0',
+            },
+          },
+        }}
+      />
 
-          {/* File input */}
-          <Input
-            type="file"
-            fullWidth
-            name="image"
-            onChange={handleFileChange}
-            sx={{ mt: 2 }}
-          />
+      <Input
+        type="file"
+        fullWidth
+        name="image"
+        onChange={handleFileChange}
+        sx={{
+          mt: 2,
+          '& input[type="file"]': {
+            border: '1px solid #ccc', 
+            padding: '10px',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            backgroundColor: '#f1f1f1',
+            transition: 'background-color 0.3s ease',
+            '&:hover': {
+              backgroundColor: '#e1e1e1', 
+            },
+          },
+        }}
+      />
 
-          {/* Submit */}
-          <Button
-            variant="contained"
-            sx={{ mt: 2 }}
-            fullWidth
-            onClick={handlePost}
-          >
-            Post
-          </Button>
-        </Box>
+      <Button
+        variant="contained"
+        sx={{
+          mt: 3,
+          backgroundColor: '#5c6bc0',
+          color: 'white',
+          padding: '12px 0',
+          borderRadius: '20px',
+          '&:hover': {
+            backgroundColor: '#3f4f91', 
+          },
+        }}
+        fullWidth
+        onClick={handlePost}
+      >
+        Post
+      </Button>
+    </Box>
       </Modal>
     </>
   );

@@ -16,19 +16,18 @@ import { SidebarData } from "../constants/sidebar.ts";
 import { featuredPosts } from "../constants/featuredPosts.ts";
 import { mainFeaturedPost } from "../constants/mainFeaturedPost.ts";
 
-// 1) Firestore imports
+
 import {
   collection,
   onSnapshot,
   addDoc,
-//  deleteDoc,
   doc,
   getDocs,
   query,
   writeBatch
 } from "firebase/firestore";
-import { db } from "../firebase.ts"; // <-- Adjust path to your firebase.ts
-// We assume you have a "db" export from your firebase config
+import { db } from "../firebase.ts"; 
+
 
 const defaultTheme = createTheme();
 
@@ -38,9 +37,9 @@ interface CommentData {
 }
 
 interface Post {
-  // We'll store the Firestore doc ID here
+
   docId: string;
-  // You still have a numeric ID if you want
+
   id: number;
   title: string;
   category: string;
@@ -80,26 +79,21 @@ export default function Blog() {
     };
   }, []);
 
-  // -----------------------------------
-  // 2) Add a new post to Firestore
-  //    This is called by Header's onAddPost callback
-  // -----------------------------------
+
   const handleAddPost = async (newPost: Omit<Post, "docId">) => {
     try {
-      // We store the entire post object except docId
-      // Firestore will generate its own doc ID
+      
       await addDoc(collection(db, "posts"), {
         ...newPost,
       });
-      // No need to manually setPosts, the onSnapshot above will auto-update
+
     } catch (error) {
       console.error("Error adding post to Firestore:", error);
     }
   };
 
-  // -----------------------------------
-  // 3) Delete a post in Firestore
-  // -----------------------------------
+
+
   const handleDeletePost = async (postDocId: string) => {
     try {
       const batch = writeBatch(db);
