@@ -35,7 +35,20 @@ A React-based blogging platform using Material UI that allows users to create, r
   - Moderators can delete posts from any topic.  
 
 - **Administrator Permissions**  
-  - Administrators can enable or disable user login accounts.  
+  - Administrators can enable or disable user login accounts.
+
+**Technologies Used
+- React
+- Material UI
+- React Router
+- Firebase/Auth
+
+**Usage
+- Run npm start to launch the development server.
+- Navigate through the different topics using the navigation bar.
+- Log in as different user personas to test permissions.
+- Create, reply to, and view posts based on topics.
+- Test admin and moderator functionalities.
 
 ## Available Scripts
 
