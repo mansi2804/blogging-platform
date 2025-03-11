@@ -1,6 +1,41 @@
-# Getting Started with Create React App
+# Blogging Platform
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A React-based blogging platform using Material UI that allows users to create, read, and manage posts based on different topics.
+
+## Features
+
+- **Navigation Bar** with the following topics:
+  - Academic Resources  
+  - Career Services  
+  - Campus  
+  - Culture  
+  - Local Community Resources  
+  - Social  
+  - Sports  
+  - Health and Wellness  
+  - Technology  
+  - Travel  
+  - Alumni  
+
+- **User Authentication**  
+  - Users can log in as one of the following personas:
+    - Student  
+    - Faculty  
+    - Staff  
+    - Moderator  
+    - Administrator  
+
+- **Post Management**  
+  - Every user can:
+    - Create a post  
+    - Reply to a post  
+    - View a post  
+
+- **Moderator Permissions**  
+  - Moderators can delete posts from any topic.  
+
+- **Administrator Permissions**  
+  - Administrators can enable or disable user login accounts.  
 
 ## Available Scripts
 
