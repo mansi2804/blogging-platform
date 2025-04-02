@@ -18,7 +18,7 @@ const defaultAuthContext: IAuthContext = {
   userEmail: null,
   userRole: null,
   loading: true,
-  logout: () => {}, // dummy logout
+  logout: () => {}, 
 };
 
 export const AuthContext = createContext<IAuthContext>(defaultAuthContext);

@@ -12,20 +12,22 @@ import {
   Paper,
   Grid,
   IconButton,
-  Avatar,
+  Switch,
+  FormControlLabel,
+
+
 } from "@mui/material";
 import CommentIcon from "@mui/icons-material/Comment";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { getImage } from '../utils/imageStorage.ts';
-
-// Firestore imports
 import { collection, onSnapshot, addDoc } from "firebase/firestore";
 import { db } from "../firebase.ts";
-
-// Import AuthContext to check user role
 import { AuthContext } from "../context/AuthContext.tsx";
+import SendIcon from "@mui/icons-material/Send";
+import { auth } from "../firebase.ts";
+import { generateReply } from "../Services/openai.ts";
 
-// Custom styles for Glassmorphism effect
+
 const glassStyle = {
   backdropFilter: "blur(10px)",
   backgroundColor: "rgba(255, 255, 255, 0.2)",
@@ -37,6 +39,7 @@ const glassStyle = {
 interface Comment {
   text: string;
   date: string;
+  userEmail?: string;
 }
 
 interface Post {
@@ -66,7 +69,9 @@ export default function Main({
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentText, setCommentText] = useState("");
 
-  // Get the current user's role from AuthContext
+  const [useOpenAIForReply, setUseOpenAIForReply] = useState(false);
+  const [openAILoading, setOpenAILoading] = useState(false);
+
   const { userRole } = useContext(AuthContext);
   console.log("Current userRole:", userRole);
 
@@ -89,6 +94,8 @@ export default function Main({
       return;
     }
 
+
+
     const commentsRef = collection(db, "posts", selectedPostForComments.docId, "comments");
     const unsubscribe = onSnapshot(commentsRef, (snapshot) => {
       const fetchedComments: Comment[] = [];
@@ -107,6 +114,7 @@ export default function Main({
   const handleCloseComments = () => {
     setSelectedPostForComments(null);
     setCommentText("");
+    setUseOpenAIForReply(false);
   };
 
   const handleCommentChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -121,6 +129,7 @@ export default function Main({
       await addDoc(commentsRef, {
         text: commentText,
         date: new Date().toLocaleString(),
+        userEmail: auth.currentUser?.email || "anonymous",
       });
       setCommentText("");
     } catch (error) {
@@ -156,6 +165,22 @@ export default function Main({
     );
   };
 
+  // Function to generate a reply using OpenAI 
+  const handleGenerateReplyForComment = async () => {
+    if (!selectedPostForComments) return;
+    setOpenAILoading(true);
+    try {
+      const prompt = `Generate a thoughtful reply to the post titled "${selectedPostForComments.title}" with the description: "${selectedPostForComments.description}"`;
+      const reply = await generateReply(prompt);
+      setCommentText(reply);
+    } catch (error) {
+      console.error("Error generating reply:", error);
+      setCommentText("Error generating reply.");
+    } finally {
+      setOpenAILoading(false);
+    }
+  };
+
   return (
     <>
       <Container maxWidth="md" sx={{ mt: 3 }}>
@@ -187,7 +212,7 @@ export default function Main({
                 <Typography variant="subtitle1" color="text.secondary" gutterBottom>
                   {post.date}
                 </Typography>
-              
+
 
                 {renderImage(post.image)}
 
@@ -284,10 +309,10 @@ export default function Main({
               <Grid item xs={7} sx={{ height: "100%" }}>
                 <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
                   <Box sx={{ mb: 3 }}>
-                    <Typography variant="h4" component="h2" gutterBottom sx={{ fontWeight: "bold",  textAlign: "center",  }}>
+                    <Typography variant="h4" component="h2" gutterBottom sx={{ fontWeight: "bold", textAlign: "center", }}>
                       {selectedPost.title}
                     </Typography>
-                    <Typography variant="subtitle1" color="text.secondary" sx={{ textAlign: "center",  }}>
+                    <Typography variant="subtitle1" color="text.secondary" sx={{ textAlign: "center", }}>
                       {selectedPost.date}
                     </Typography>
                   </Box>
@@ -309,7 +334,7 @@ export default function Main({
                         wordWrap: 'break-word',
                         lineHeight: 1.5,
                         textAlign: "justify",
-                        fontWeight: 'bold',  
+                        fontWeight: 'bold',
                         fontSize: '1.05rem',
                       }}
                     >
@@ -374,12 +399,12 @@ export default function Main({
                     <Box key={index} sx={{ marginBottom: "16px" }}>
                       <Paper sx={{ padding: "16px", ...glassStyle }}>
                         <Typography variant="body2" sx={{
-                        whiteSpace: 'pre-wrap',
-                        wordWrap: 'break-word',
-                        lineHeight: 1.5,
-                        fontWeight: 'bold',  
-                        fontSize: '1rem',
-                      }}>{comment.text}</Typography>
+                          whiteSpace: 'pre-wrap',
+                          wordWrap: 'break-word',
+                          lineHeight: 1.5,
+                          fontWeight: 'bold',
+                          fontSize: '1rem',
+                        }}>{comment.text}</Typography>
                         <Typography variant="caption" color="text.secondary" sx={{ marginTop: "8px" }}>
                           {comment.date}
                         </Typography>
@@ -401,14 +426,60 @@ export default function Main({
                   variant="outlined"
                   sx={{ mb: 2 }}
                 />
+
+                <Typography variant="h6" gutterBottom>
+                  Add Comment
+                </Typography>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={useOpenAIForReply}
+                      onChange={(e) => setUseOpenAIForReply(e.target.checked)}
+                    />
+                  }
+                  label="Generate reply using OpenAI"
+                />
+                {useOpenAIForReply && (
+                  <Button
+                    variant="contained"
+                    onClick={handleGenerateReplyForComment}
+                    disabled={openAILoading}
+                    sx={{ mt: 1, mb: 2 }}
+                  >
+                    {openAILoading ? "Generating..." : "Generate Reply"}
+                  </Button>
+                )}
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={4}
+                  placeholder="Share your thoughts..."
+                  value={commentText}
+                  onChange={handleCommentChange}
+                  variant="outlined"
+                  sx={{
+                    mb: 2,
+                    "& .MuiOutlinedInput-root": { borderRadius: 2 },
+                  }}
+                />
                 <Button
+                  fullWidth
                   variant="contained"
-                  color="primary"
                   onClick={handleAddComment}
                   disabled={!commentText.trim()}
+                  endIcon={<SendIcon />}
+                  sx={{
+                    py: 1.5,
+                    borderRadius: 2,
+                    background: "linear-gradient(45deg, #1976d2, #42a5f5)",
+                    "&:hover": {
+                      background: "linear-gradient(45deg, #1565c0, #1976d2)",
+                    },
+                  }}
                 >
-                  Add Comment
+                  Post Comment
                 </Button>
+
               </Box>
             </>
           )}

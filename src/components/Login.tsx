@@ -28,7 +28,7 @@ const Login: React.FC = () => {
         }
       }
 
-      // Redirect to the blog page upon successful login and not disabled
+      
       navigate('/blog');
     } catch (error: any) {
       console.error('Error logging in:', error);

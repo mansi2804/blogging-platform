@@ -24,9 +24,11 @@ import {
   doc,
   getDocs,
   query,
-  writeBatch
+  writeBatch,
+  where
 } from "firebase/firestore";
 import { db } from "../firebase.ts"; 
+import { indexPost } from "../Services/elasticsearch.ts";
 
 
 const defaultTheme = createTheme();
@@ -38,7 +40,7 @@ interface CommentData {
 
 interface Post {
 
-  docId: string;
+  docId?: string;
 
   id: number;
   title: string;
@@ -47,17 +49,16 @@ interface Post {
   image: string | null;
   date: string;
   comments: CommentData[];
+  createdBy?: string;
 }
 
 export default function Blog() {
   const [posts, setPosts] = React.useState<Post[]>([]);
 
-  // State for currently selected category
+
   const [selectedCategory, setSelectedCategory] = React.useState<string>("");
 
-  // -----------------------------------
-  // 1) Listen to Firestore 'posts' in real-time (on mount)
-  // -----------------------------------
+
   React.useEffect(() => {
     const postsRef = collection(db, "posts");
     const unsubscribe = onSnapshot(postsRef, (snapshot) => {
@@ -66,7 +67,7 @@ export default function Blog() {
       snapshot.forEach((docSnap) => {
         const data = docSnap.data() as Omit<Post, "docId">;
         fetched.push({
-          docId: docSnap.id, // store doc's string ID
+          docId: docSnap.id, 
           ...data,
         });
       });
@@ -80,37 +81,55 @@ export default function Blog() {
   }, []);
 
 
-  const handleAddPost = async (newPost: Omit<Post, "docId">) => {
+  const handleAddPost = async (newPost: Omit<Post, "docId"> & { createdBy: string }) => {
     try {
-      
-      await addDoc(collection(db, "posts"), {
+      const docRef = await addDoc(collection(db, "posts"), {
         ...newPost,
       });
+      console.log("Post added to Firestore with ID:", docRef.id);
 
+
+      await indexPost(docRef.id, { ...newPost, docId: docRef.id });
+
+
+      const subscriptionsRef = collection(db, "subscriptions");
+      const q = query(subscriptionsRef, where("category", "==", newPost.category));
+      const snapshot = await getDocs(q);
+
+      snapshot.forEach(async (docSnap) => {
+        const subscription = docSnap.data();
+        if (subscription.email !== newPost.createdBy) {
+          await addDoc(collection(db, "notifications"), {
+            email: subscription.email,
+            message: `You’ve subscribed to ${newPost.category}, and we have a new post for you! Read, comment, and be happy!`,
+            createdAt: new Date().toLocaleString(),
+            read: false, 
+          });
+        }
+      });
     } catch (error) {
       console.error("Error adding post to Firestore:", error);
     }
   };
 
 
-
   const handleDeletePost = async (postDocId: string) => {
     try {
       const batch = writeBatch(db);
       
-      // 1. Get all comments for this post
+ 
       const commentsRef = collection(db, "posts", postDocId, "comments");
       const commentsSnapshot = await getDocs(query(commentsRef));
       
-      // 2. Add comment deletions to batch
+
       commentsSnapshot.forEach((commentDoc) => {
         batch.delete(doc(db, "posts", postDocId, "comments", commentDoc.id));
       });
       
-      // 3. Add post deletion to batch
+
       batch.delete(doc(db, "posts", postDocId));
       
-      // 4. Execute all deletions in one atomic operation
+  
       await batch.commit();
       
       console.log("Post and all comments deleted successfully");

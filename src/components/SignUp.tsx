@@ -9,7 +9,7 @@ type Role = 'faculty' | 'student' | 'staff' | 'moderator' | 'administrator';
 const SignUp: React.FC = () => {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
-  const [role, setRole] = useState<Role>('student'); // Default role
+  const [role, setRole] = useState<Role>('student'); 
   const navigate = useNavigate();
 
   interface IUserData {

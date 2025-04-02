@@ -3,9 +3,10 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Blog from "./components/Blog.tsx";
 import SignUp from "./components/SignUp.tsx";
 import Login from "./components/Login.tsx";
-import AdminPanel from "./components/AdminPanel.tsx"; // new admin panel
-import ProtectedRoute from "./routes/ProtectedRoute.tsx"; // ensure this is set up
+import AdminPanel from "./components/AdminPanel.tsx"; 
+import ProtectedRoute from "./routes/ProtectedRoute.tsx"; 
 import { AuthProvider } from "./context/AuthContext.tsx";
+
 
 import "./App.css";
 
