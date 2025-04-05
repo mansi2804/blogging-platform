@@ -28,7 +28,7 @@ const ActivityRecommendation: React.FC = () => {
       const currentWeather = weatherData.current_weather;
       const weatherInfo = `Temperature: ${currentWeather.temperature}°C, Weather Code: ${currentWeather.weathercode}`;
 
-      const SERP_API_KEY = "aced2baa76674ff7fc21505ce52ba7fbf90adddbdf425cc63d35717362331ee8"; 
+      const SERP_API_KEY = "your_SERP_API_KEY"; //replace with your key
       const corsProxy = "https://thingproxy.freeboard.io/fetch/";
       const serpUrl = `${corsProxy}https://serpapi.com/search.json?engine=google&q=current+sports+events+in+${city}&api_key=${SERP_API_KEY}`;
       const eventsRes = await fetch(serpUrl);
