@@ -32,7 +32,7 @@ The Blogging Platform is an interactive, AI-driven space built with React, Mater
     - Create a post  
     - Reply to a post  
     - View a post  
-
+ 
 - **Moderator Permissions**  
   - Moderators can delete posts from any topic.
 
