@@ -1,4 +1,4 @@
-
+ 
 # Blogging Platform – AI-Powered Community Engagement
 
 The Blogging Platform is an interactive, AI-driven space built with React, Material UI, Firebase, and Docker-powered ElasticSearch. It allows users to explore diverse topics, create and engage with posts, and receive AI-generated replies. With personalized recommendations, real-time notifications, and advanced search capabilities, the platform enhances community interaction and knowledge sharing, while offering role-based permissions.
